@@ -47,22 +47,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _checkStoredKey() async {
     final key = await AdminRepository.getStoredKey();
     if (key != null) {
-      final ok = await AdminRepository.verifyAdminKey(key);
-      if (mounted) setState(() { _authed = ok; _checking = false; });
+      try {
+        final ok = await AdminRepository.verifyAdminKey(key);
+        if (mounted) setState(() { _authed = ok; _checking = false; });
+      } catch (e) {
+        // Network/server error — show login screen with error
+        if (mounted) {
+          setState(() => _checking = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal terhubung: $e'), backgroundColor: NusaTheme.primaryColor, duration: const Duration(seconds: 3)),
+          );
+        }
+      }
     } else {
       if (mounted) setState(() => _checking = false);
     }
   }
 
   Future<void> _login(String key) async {
-    final ok = await AdminRepository.verifyAdminKey(key);
-    if (ok) {
-      await AdminRepository.saveKey(key);
-      if (mounted) setState(() => _authed = true);
-    } else {
+    try {
+      final ok = await AdminRepository.verifyAdminKey(key);
+      if (ok) {
+        await AdminRepository.saveKey(key);
+        if (mounted) setState(() => _authed = true);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Admin key tidak valid'), backgroundColor: NusaTheme.primaryColor, duration: Duration(seconds: 2)),
+          );
+        }
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Admin key tidak valid'), backgroundColor: NusaTheme.primaryColor, duration: Duration(seconds: 2)),
+          SnackBar(content: Text('Gagal terhubung ke server: $e'), backgroundColor: NusaTheme.primaryColor, duration: const Duration(seconds: 3)),
         );
       }
     }

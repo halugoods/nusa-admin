@@ -183,23 +183,34 @@ class AdminRepository {
     return data;
   }
 
+  /// Returns `true` if the admin key is valid.
+  /// Throws [Exception] with the actual error message on network/server errors,
+  /// so the UI can distinguish "invalid key" from "server unreachable".
   static Future<bool> verifyAdminKey(String key) async {
+    final uri = Uri.parse(_edgeUrl);
+    final res = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': _anonKey,
+        'Authorization': 'Bearer $_anonKey',
+        'x-admin-key': key,
+      },
+      body: jsonEncode({'action': 'stats'}),
+    );
+
+    if (res.statusCode == 200) return true;
+    if (res.statusCode == 401) return false; // invalid key
+
+    // Try to parse error body
+    String msg;
     try {
-      final uri = Uri.parse(_edgeUrl);
-      final res = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': _anonKey,
-          'Authorization': 'Bearer $_anonKey',
-          'x-admin-key': key,
-        },
-        body: jsonEncode({'action': 'stats'}),
-      );
-      return res.statusCode == 200;
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      msg = data['error'] as String? ?? 'HTTP ${res.statusCode}';
     } catch (_) {
-      return false;
+      msg = 'Server error: HTTP ${res.statusCode}';
     }
+    throw Exception(msg);
   }
 
   static Future<LicenseStats> getStats() async {
