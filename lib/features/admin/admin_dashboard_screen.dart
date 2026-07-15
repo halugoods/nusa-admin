@@ -9,15 +9,15 @@ final _dateFmt = DateFormat('d MMM yy HH:mm', 'id_ID');
 String _fmtDate(String iso) { try { return _dateFmt.format(DateTime.parse(iso).toLocal()); } catch (_) { return iso; } }
 
 Color _statusColor(String s) => switch (s) {
-  'Generated' => NusaTheme.accentBlue, 'Trial' => NusaTheme.accentGold,
-  'Active' => NusaTheme.accentGreen, 'Cancelled' => NusaTheme.primaryColor,
-  'Expired' => NusaTheme.textTertiary, 'Suspended' => NusaTheme.accentOrange,
+  'Generated' => NusaTheme.statusGenerated, 'Trial' => NusaTheme.statusTrial,
+  'Active' => NusaTheme.statusActive, 'Cancelled' => NusaTheme.statusCancelled,
+  'Expired' => NusaTheme.statusExpired, 'Suspended' => NusaTheme.statusSuspended,
   _ => NusaTheme.textSecondary,
 };
 
 String _statusLabel(String s) => switch (s) {
-  'Generated' => 'Generated', 'Trial' => 'Trial', 'Active' => 'Aktif',
-  'Cancelled' => 'Cancelled', 'Expired' => 'Expired', 'Suspended' => 'Suspended',
+  'Generated' => 'Tersedia', 'Trial' => 'Trial', 'Active' => 'Aktif',
+  'Cancelled' => 'Dibatalkan', 'Expired' => 'Kadaluarsa', 'Suspended' => 'Ditangguhkan',
   _ => s,
 };
 
@@ -301,29 +301,142 @@ class _OverviewTabState extends State<_OverviewTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return Center(child: Text(_error!, style: const TextStyle(color: NusaTheme.textSecondary)));
+    if (_loading) return const _ShimmerOverview();
+
+    if (_error != null) return Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.error_outline, size: 48, color: NusaTheme.primaryColor.withValues(alpha: 0.5)),
+        const SizedBox(height: 12),
+        Text(_error!, style: const TextStyle(color: NusaTheme.textSecondary), textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('Coba Lagi'), style: ElevatedButton.styleFrom(backgroundColor: NusaTheme.primaryColor, foregroundColor: Colors.white)),
+      ]),
+    );
 
     final stats = _stats!;
-    final cards = [
-      ('Total Lisensi', stats.total, NusaTheme.accentBlue),
-      ('Generated (Belum Aktif)', stats.generated, NusaTheme.accentGold),
-      ('Trial', stats.trial, const Color(0xFFEAB308)),
-      ('Aktif', stats.active, NusaTheme.accentGreen),
-      ('Cancelled', stats.cancelled, NusaTheme.primaryColor),
-      ('Expired', stats.expired, NusaTheme.textTertiary),
-      ('Suspended', stats.suspended, NusaTheme.accentOrange),
-      ('Total Aktivasi', stats.totalActivations, NusaTheme.accentPurple),
+    final statusCards = [
+      ('Tersedia', stats.generated, NusaTheme.statusGenerated, Icons.auto_awesome_outlined),
+      ('Trial', stats.trial, NusaTheme.statusTrial, Icons.timer_outlined),
+      ('Aktif', stats.active, NusaTheme.statusActive, Icons.check_circle_outline),
+      ('Dibatalkan', stats.cancelled, NusaTheme.statusCancelled, Icons.cancel_outlined),
+      ('Kadaluarsa', stats.expired, NusaTheme.statusExpired, Icons.schedule_outlined),
+      ('Ditangguhkan', stats.suspended, NusaTheme.statusSuspended, Icons.block_outlined),
     ];
+    final activityCards = [
+      ('Total Lisensi', stats.total, NusaTheme.accentBlue, Icons.inventory_2_outlined),
+      ('Total Aktivasi', stats.totalActivations, NusaTheme.accentPurple, Icons.devices_outlined),
+    ];
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth > 600 ? 4 : 2;
 
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: cards.map((c) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: _StatCard(label: c.$1, value: c.$2, color: c.$3),
-        )).toList(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        children: [
+          // ── Status Lisensi section ──
+          const Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: Text('Status Lisensi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaTheme.textSecondary, letterSpacing: 0.5)),
+          ),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: crossAxisCount, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.6),
+            itemCount: statusCards.length,
+            itemBuilder: (_, i) {
+              final c = statusCards[i];
+              return _StatCard(label: c.$1, value: c.$2, color: c.$3, icon: c.$4);
+            },
+          ),
+          const SizedBox(height: 20),
+          const Divider(),
+          const SizedBox(height: 16),
+          // ── Aktivitas section ──
+          const Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: Text('Aktivitas', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaTheme.textSecondary, letterSpacing: 0.5)),
+          ),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: crossAxisCount, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.6),
+            itemCount: activityCards.length,
+            itemBuilder: (_, i) {
+              final c = activityCards[i];
+              return _StatCard(label: c.$1, value: c.$2, color: c.$3, icon: c.$4);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shimmer skeleton loader for overview cards.
+class _ShimmerOverview extends StatefulWidget {
+  const _ShimmerOverview();
+  @override
+  State<_ShimmerOverview> createState() => _ShimmerOverviewState();
+}
+
+class _ShimmerOverviewState extends State<_ShimmerOverview> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
+    _anim = Tween<double>(begin: -2, end: 2).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _ctrl.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth > 600 ? 4 : 2;
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        children: [
+          _shimmerBlock(80, 14),
+          const SizedBox(height: 10),
+          GridView.builder(
+            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: crossAxisCount, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.6),
+            itemCount: 6,
+            itemBuilder: (_, __) => _shimmerBlock(double.infinity, double.infinity),
+          ),
+          const SizedBox(height: 24),
+          _shimmerBlock(60, 14),
+          const SizedBox(height: 10),
+          GridView.builder(
+            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: crossAxisCount, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.6),
+            itemCount: 2,
+            itemBuilder: (_, __) => _shimmerBlock(double.infinity, double.infinity),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _shimmerBlock(double w, double h) {
+    return Container(
+      width: w, height: h,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          begin: Alignment(_anim.value - 1, 0),
+          end: Alignment(_anim.value + 1, 0),
+          colors: const [Color(0xFFE5E7EB), Color(0xFFF3F4F6), Color(0xFFE5E7EB)],
+        ),
       ),
     );
   }
@@ -333,26 +446,36 @@ class _StatCard extends StatelessWidget {
   final String label;
   final int value;
   final Color color;
-  const _StatCard({required this.label, required this.value, required this.color});
+  final IconData icon;
+  const _StatCard({required this.label, required this.value, required this.color, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: NusaTheme.borderColor),
+        border: Border(left: BorderSide(color: color, width: 4)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-            alignment: Alignment.center,
-            child: Text('$value', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color)),
+          Row(
+            children: [
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 16, color: color),
+              ),
+              const Spacer(),
+              Text('$value', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: color, height: 1)),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: NusaTheme.textSecondary))),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: NusaTheme.textSecondary)),
         ],
       ),
     );
@@ -462,7 +585,15 @@ class _LicensesTabState extends State<_LicensesTab> {
               : _error != null
                   ? Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_error!, style: const TextStyle(color: NusaTheme.textSecondary), textAlign: TextAlign.center)))
                   : _resp == null || _resp!.licenses.isEmpty
-                      ? const Center(child: Text('Tidak ada lisensi ditemukan.', style: TextStyle(color: NusaTheme.textTertiary, fontSize: 14)))
+                      ? Center(
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.search_off_rounded, size: 56, color: NusaTheme.textTertiary.withValues(alpha: 0.5)),
+                            const SizedBox(height: 12),
+                            const Text('Tidak ada lisensi ditemukan.', style: TextStyle(color: NusaTheme.textTertiary, fontSize: 14)),
+                            const SizedBox(height: 4),
+                            const Text('Coba ubah filter atau kata kunci pencarian.', style: TextStyle(color: NusaTheme.textTertiary, fontSize: 12)),
+                          ]),
+                        )
                       : RefreshIndicator(
                           onRefresh: _load,
                           child: ListView.builder(
@@ -474,16 +605,25 @@ class _LicensesTabState extends State<_LicensesTab> {
                               }
                               final totalPages = (_resp!.total / 30).ceil();
                               return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(vertical: 20),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    TextButton(onPressed: _page > 0 ? () { _page--; _load(); } : null, child: const Text('← Prev', style: TextStyle(fontSize: 13))),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      child: Text('${_page + 1} / ${totalPages > 0 ? totalPages : 1}', style: const TextStyle(fontSize: 13, color: NusaTheme.textSecondary)),
+                                    _PageBtn(
+                                      icon: Icons.chevron_left,
+                                      onTap: _page > 0 ? () { _page--; _load(); } : null,
                                     ),
-                                    TextButton(onPressed: (_page + 1) < totalPages ? () { _page++; _load(); } : null, child: const Text('Next →', style: TextStyle(fontSize: 13))),
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      decoration: BoxDecoration(color: NusaTheme.borderColor, borderRadius: BorderRadius.circular(10)),
+                                      child: Text('${_page + 1} / ${totalPages > 0 ? totalPages : 1}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: NusaTheme.textSecondary)),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    _PageBtn(
+                                      icon: Icons.chevron_right,
+                                      onTap: (_page + 1) < totalPages ? () { _page++; _load(); } : null,
+                                    ),
                                   ],
                                 ),
                               );
@@ -951,6 +1091,29 @@ class _GenResultCard extends StatelessWidget {
           ),
         ),
       ]),
+    );
+  }
+}
+
+class _PageBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  const _PageBtn({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 36, height: 36,
+        decoration: BoxDecoration(
+          color: onTap != null ? NusaTheme.primaryColor : NusaTheme.borderColor,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 18, color: onTap != null ? Colors.white : NusaTheme.textTertiary),
+      ),
     );
   }
 }

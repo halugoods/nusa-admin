@@ -18,6 +18,14 @@ abstract class NusaTheme {
   static const accentOrange = Color(0xFFF97316);
   static const accentBlue = Color(0xFF3B82F6);
 
+  // Semantic status tokens
+  static const statusGenerated = accentBlue;
+  static const statusTrial = accentGold;
+  static const statusActive = accentGreen;
+  static const statusCancelled = primaryColor;
+  static const statusExpired = textTertiary;
+  static const statusSuspended = accentOrange;
+
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
